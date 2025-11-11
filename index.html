@@ -281,30 +281,46 @@
         function validate() { document.getElementById('submitBtn').disabled = !allEntriesValid(); persist(); }
 
         async function submitEntries() {
-            if (!allEntriesValid()) return;
-            document.getElementById('submitBtn').disabled = true;
-            try {
-                const payload = {
-                    token: AUTH_TOKEN,
-                    honeypot: HONEYPOT,
-                    entries: entries.map(e => ({
-                        content: e.content,
-                        neartite: !!e.neartite,
-                        cohort, // per-link token from URL
-                        client_ts: new Date().toISOString(),
-                        items: e.items.map(l => ({ item: l.item, grade: l.grade, quantity: parseInt(l.qty, 10) }))
-                    }))
-                };
-                const res = await fetch(WEBAPP_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-                if (!res.ok) throw new Error(`HTTP ${res.status}`);
-                clearEntries();
-                alert('Submitted successfully!');
-            } catch (err) {
-                console.error(err);
-                alert('Submission failed.');
-                document.getElementById('submitBtn').disabled = !allEntriesValid();
-            }
-        }
+          if (!allEntriesValid()) return;
+
+          const submitBtn = document.getElementById('submitBtn');
+          submitBtn.disabled = true;
+
+          try {
+            const payload = {
+              token: AUTH_TOKEN,
+              honeypot: HONEYPOT,
+              entries: entries.map(e => ({
+                content: e.content,
+                neartite: !!e.neartite,
+                cohort, // per-link token from URL
+                client_ts: new Date().toISOString(),
+                items: e.items.map(l => ({
+                  item: l.item,
+                  grade: l.grade,
+                  quantity: parseInt(l.qty, 10)
+                }))
+              }))
+            };
+
+    // IMPORTANT: no explicit Content-Type header -> no preflight
+    const res = await fetch(WEBAPP_URL, { method: 'POST', body: JSON.stringify(payload) });
+
+    // Try to read JSON error payloads from Apps Script
+    let data = null;
+    try { data = await res.clone().json(); } catch { /* response may be empty or non-JSON */ }
+
+    if (!res.ok || (data && data.ok === false)) {
+      const msg = (data && data.error) ? data.error : `HTTP ${res.status}`;
+      throw new Error(msg);
+    }
+
+    clearEntries();
+    alert('Submitted successfully!');
+  } catch (err) {
+    console.error(err);
+    alert(`Submission failed: ${er
+
 
         document.getElementById('addBtn').onclick = addEntry;
         document.getElementById('clearBtn').onclick = () => { if (confirm('Clear all entries?')) clearEntries(); };
@@ -314,3 +330,4 @@
     </script>
 </body>
 </html>
+
