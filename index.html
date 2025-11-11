@@ -310,7 +310,11 @@
       const fd = new FormData();
       fd.append('payload', JSON.stringify(payload));
 
-      const res = await fetch(WEBAPP_URL, { method: 'POST', body: fd });
+      const res = await fetch(WEBAPP_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
 
       // Try to parse JSON from Apps Script (ok or error)
       let data = null;
@@ -339,6 +343,7 @@
 </script>
 </body>
 </html>
+
 
 
 
