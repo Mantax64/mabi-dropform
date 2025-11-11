@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Mabinogi Drop Logger</title>
+    <style>
+        body {
+            font-family: system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+            margin: 0;
+            background: #0b0f14;
+            color: #e5e7eb;
+        }
+
+        :root {
+            --gap: 12px;
+            --muted: #9aa0a6;
+        }
+
+        * {
+            color-scheme: dark;
+            box-sizing: border-box;
+        }
+
+        label {
+            color: #e5e7eb;
+        }
+
+        select, input[type="number"], input[type="text"], input[type="search"], input[type="checkbox"] {
+            color: #e5e7eb;
+            background: #12161c;
+            border: 1px solid #2a2f35;
+            border-radius: 8px;
+        }
+
+            select option {
+                color: #e5e7eb;
+                background: #12161c;
+            }
+
+        button {
+            color: #e5e7eb;
+        }
+
+        .page {
+            padding: 24px 5vw;
+        }
+
+        .entries {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0,1fr));
+            gap: var(--gap);
+            align-items: start;
+        }
+
+        .entry {
+            border: 1px solid #2a2f35;
+            border-radius: 12px;
+            padding: 12px;
+            background: #111418;
+            box-shadow: 0 1px 2px rgba(0,0,0,.4);
+            width: 100%;
+            min-width: 0;
+        }
+
+        .divider {
+            height: 1px;
+            background: #2a2f35;
+            margin: 8px 0 12px;
+        }
+
+        .itemline {
+            display: grid;
+            grid-template-columns: 2fr 1fr 1fr auto;
+            gap: 8px;
+            align-items: center;
+        }
+
+            .itemline input[type="search"] {
+                width: 100%;
+            }
+
+            .itemline .kill {
+                border: 1px solid #3a3f45;
+                background: #1a1e23;
+                border-radius: 8px;
+                padding: 6px 10px;
+                cursor: pointer;
+            }
+
+        .add-item {
+            margin-top: 8px;
+            padding: 6px 10px;
+            border-radius: 8px;
+            border: 1px solid #3a3f45;
+            background: #1a1e23;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <div class="page">
+        <h1>Mabinogi Drop Logger</h1>
+        <p>Track dungeon drops with searchable item inputs.</p>
+
+        <div class="toolbar">
+            <button id="addBtn">➕ Add Entry</button>
+            <button id="clearBtn">🧹 Clear Entries</button>
+            <button id="submitBtn" class="primary" disabled>📤 Submit Entries</button>
+        </div>
+
+        <div id="entries" class="entries"></div>
+    </div>
+
+    <script>
+        const WEBAPP_URL = "https://script.google.com/macros/s/AKfycbxa62_y9Agjs2LlslaUyeP8BTV5rpUvn2EVQb82NYkSNvke68j4OTccphvkEI5jSpu2zA/exec";
+        const AUTH_TOKEN = "Me7vUMqpMa";
+
+        const CONTENTS = [
+            "Alby ADV HM", "Alby Shineseeker", "Ciar ADV HM",
+            "Rundal ADV HM", "Awakened Abyssal Lord", "Feth Fiada",
+            "Revived Illusion", "Seven Nightmares", "Crom Bas",
+            "Crom Bas HM", "Glenn Bearna", "Glenn Bearna HM", "Glenn Bearna VHM",
+            "Rabbie Phantasm VHM", "Bri Leith G1", "Bri Leith G2", "Bri Leith G3",
+        ];
+
+        const ITEM_LIST = [
+            "Broken Magic Essence", "Chaotic Rune", "Condensed Chaotic Rune", "Enchanted Thread", "Magic Essence", "Ancient Beast Hide", "Essence of Raw Force", "Frosted Borealis Crystal", "Resilient Ebony", "Sub-Zero Coolant", "Valiance Metal Shard", "Cross-hatched Mineral", "Stone Stalk Mineral", "Thornbush Mineral", "Awakened Strength Crystal", "Awakened Strength Fragment",
+            "Radiant String", "Sub-Zero Coolant",
+            "Hebona Circlet", "Hebona Gloves", "Hebona Robe", "Hebona Shoes",
+            "Cressida Wear", "Cressida Gloves", "Cressida Shoes",
+            "Bohemian Wear", "Bohemian Hat", "Bohemian Shoes", "Bohemian Band",
+            "Languhiris Chaser Armor", "Languhiris Chaser Circlet", "Languhiris Chaser Boots", "Languhiris Chaser Gloves",
+            "Pure White Dust", "Refined Catalys", "Ruptured Black Metal", "Shattered Black Metal", "Restorative Powder", "Distortion Powder",
+            "Sewing Pattern: Destructive Gloves (F)", "Sewing Pattern: Destructive Gloves (M)", "Sewing Pattern: Destructive Robe (F)", "Sewing Pattern: Destructive Robe (M)", "Sewing Pattern: Destructive Shoes (F)", "Sewing Pattern: Destructive Shoes (M)",
+            "Awakened ES", "Disaster ES", "Enigmatic ES", "Sonata ES", "Long-lasting ES", "Backbreaking ES", "Brainstorm ES", "Challenger ES", "Clashing ES", "Conqueror ES", "Corrib ES", "Created ES", "Downburst ES", "Dreamy ES", "Fury ES", "Glowing Sky ES", "Heavy Rain ES", "Lancia ES", "Marksman ES", "Meteoroid ES", "Midnight ES", "Nightfall ES", "Nocturne ES", "Pallid ES", "Resistance ES", "Resolution ES", "Reunion ES", "Sharpshooter ES", "Spiraling ES", "Sunshower ES", "Supernova ES", "Whirlwind ES",
+            "Coma ES", "Target ES",
+            "Kraken Heart", "Kraken Leg Spike", "Kraken Mucilage", "Fierce Kraken Sucker",
+            "Vengeance-Imbued Alchemy Crystal", "Vengeance-Imbued Blade", "Vengeance-Imbued Old Tree Fragment", "Misty Red Gem",
+            "Functional Geata Fragment", "Abyssal Orb", "Magical Mist Crystal",
+            "Broken Geata Fragment", "Blazing Flame Essence", "Remnants of Illusion", "Rift Hoof", "Sharp Crystallized Mineral",
+            "Ominous Ore", "Evil Eye Slate", "Evil Eye Sealstone",
+            "Assault Slash +1 Scroll", "Bash +1 Scroll", "Smash  +1 Scroll", "Charge +1 Scroll", "Windmill +1 Scroll", "Magnum Shot +1 Scroll", "Support Shot +1 Scroll", "Firebolt +1 Scroll", "Healing +1 Scroll", "Icebolt +1 Scroll", "Flame Burst +1 Scroll", "Life Dragin +1 Scroll", "Water Cannon +1 Scroll", "Blacksmith +1 Scroll", "Fishing +1 Scroll", "Metallurgy +1 Scroll", "Refining +1 Scroll", "Attack Speed +1 Scroll", "Critical Damage +1 Scroll", "Ladeca Movement Speed +1 Scroll", "Max Damage +1 Scroll", "MP Usage Reduction +1 Scroll", "Poison Immunity +1 Scroll", "Shock Absord +1 Scroll", "Demigod +1 Scroll", "Gold Strike +1 Scroll",
+            "Crystallized Remnants of Winter", "Winter Dream Terminus Crystal",
+            "Cailleach's Wintersbrand Appearance Scroll", "Cailleach's Wintersbreath Appearance Scroll", "Cailleach's Wintersbite Appearance Scroll",
+            "Unfinished Reverie's Diadem Halo",
+            "Abominable Rabbit ES", "Birch Tree ES", "Covered ES", "Desirous ES", "Fleeing ES", "Folach Catt ES", "Frostbitten ES", "Frostwork ES", "Gwyllgi ES", "Gwyllion ES", "Immovable ES", "Imprisoning ES", "Longing ES", "Mirror ES", "Onlooking ES", "Rotating ES", "Snuggly Sneachta ES", "Sunken ES", "Tide ES", "Trace ES", "Trail ES", "Trajectory ES", "Vanished ES", "Wishing ES",
+            "Homestead Cailleach's Barrier Figure",
+            "Ceann Bliana Bulwark's Armor", "Ceann Bliana Bulwark's Gauntlets", "Ceann Bliana Bulwark's Greaves", "Ceann Bliana Bulwark's Circlet",
+            "Ceann Bliana Scholar's Halfrobe", "Ceann Bliana Scholar's Ringbands", "Ceann Bliana Scholar's Shoes", "Ceann Bliana Scholar's Hairpin",
+            "Ceann Bliana Skirmisher's Cuirass", "Ceann Bliana Skirmisher's Circlet", "Ceann Bliana Skirmisher's Circlet", "Ceann Bliana Skirmisher's Gloves", "Ceann Bliana Skirmisher's Boots",
+            "Dark Erg Fragment", "Adamantine", "Glas Ghaibhleann Heart", "Damaged Glas Ghaibhleann Feather", "Grumpy Cat's Marble",
+            "Lord of Ruination Staff", "Bow of Ruination", "Demolition Deepglow Staff", "Demolition Breaker Bow",
+            "Nightbringer Assault", "Nightbringer Enforcer", "Nightbringer Vanguard", "Nightbringer Warlord", "Nightbringer Berserker", "Nightbringer Spearhead", "Nightbringer Predator", "Nightbringer Rogue", "Nightbringer Elementalist", "Nightbringer Prophet", "Nightbringer Inquisitor", "Nightbringer Technician", "Nightbringer Vagabonds", "Nightbringer Tricksters", "Nightbringer Vanquishers", "Nightbringer Infiltrator", "Nightbringer Wraith", "Nightbringer Observer", "Nightbringer Vega", "Nightbringer Edged Wings", "Nightbringer Pure Wings",
+            "Perseus Steeled Sword", "Perseus Brutal War Hammer", "Perseus Vigilant Shield", "Perseus Monumental Blade", "Perseus Cleaving Warrior Axe", "Perseus Tempestuous Lance", "Perseus Voiceless Bow", "Perseus Dynamic Crossbow", "Perseus Voiceless Arrows", "Perseus Arcane Wand", "Perseus Forbidden Spell Book", "Perseus Mystic Staff", "Perseus Tyrannus Cylinder", "Perseus Tyrannus Guard Cylinder", "Perseus Tormented Knuckles", "Perseus Conflict Control Bars", "Fallen Pierrot Marionette", "Perseus Thundering Dual Guns", "Perseus Swift Shuriken", "Perseus Rending Chain Blade", "Perseus Peregrine Scythe", "Perseus Arcturus Orb",
+
+        ];
+
+        const GRADES = ["N/A", "Gray", "Green", "Blue", "Purple", "Gold"];
+        const QUANTITIES = Array.from({ length: 50 }, (_, i) => String(i + 1));
+
+        // Cohort capture from URL token (fallback to public)
+        const cohort = new URLSearchParams(location.search).get('t') || 'public-xyz';
+        // Honeypot value (UI never sets this; bots might). Should be empty.
+        const HONEYPOT = "";
+
+        let entries = [];
+        let idCounter = 1;
+        let lineCounter = 1;
+
+        function persist() { try { sessionStorage.setItem('entries_v3', JSON.stringify(entries)); } catch { } }
+
+        function makeSelect(opts, value, onChange, withPlaceholder = true) {
+            const sel = document.createElement('select');
+            if (withPlaceholder) {
+                const ph = document.createElement('option'); ph.value = ''; ph.textContent = '— Select —'; sel.appendChild(ph);
+            }
+            for (const o of opts) { const opt = document.createElement('option'); opt.value = o; opt.textContent = o; sel.appendChild(opt); }
+            sel.value = (value ?? (opts.includes('N/A') ? 'N/A' : ''));
+            sel.onchange = () => onChange(sel.value || (withPlaceholder ? undefined : sel.value));
+            return sel;
+        }
+
+        function labeled(labelText, node) {
+            const wrap = document.createElement('div');
+            const lab = document.createElement('label'); lab.textContent = labelText; lab.style.display = 'block'; lab.style.fontSize = '.8rem'; lab.style.marginBottom = '4px'; lab.style.color = '#e5e7eb';
+            wrap.appendChild(lab); wrap.appendChild(node); return wrap;
+        }
+
+        function makeSearchInput(placeholder, list, value, onChange) {
+            const inp = document.createElement('input');
+            inp.type = 'search';
+            inp.placeholder = placeholder;
+            inp.value = value || '';
+            inp.oninput = () => { onChange(inp.value); };
+            inp.setAttribute('list', list);
+            return inp;
+        }
+
+        function addEntry() {
+            const entry = { id: idCounter++, content: undefined, neartite: false, items: [] };
+            entry.items.push({ id: lineCounter++, item: undefined, grade: 'N/A', qty: '1' });
+            entries.push(entry); persist(); render();
+        }
+
+        function clearEntries() { entries = []; idCounter = 1; lineCounter = 1; persist(); render(); }
+        function removeEntry(id) { entries = entries.filter(e => e.id !== id); persist(); render(); }
+        function addItemLine(entry) { entry.items.push({ id: lineCounter++, item: undefined, grade: 'N/A', qty: '1' }); persist(); render(); }
+        function removeItemLine(entry, lineId) { entry.items = entry.items.filter(l => l.id !== lineId); persist(); render(); }
+
+        function allEntriesValid() {
+            if (!entries.length) return false;
+            return entries.every(e => e.content && e.items.length > 0 && e.items.every(l => l.item && l.grade && parseInt(l.qty, 10) >= 1));
+        }
+
+        function render() {
+            const container = document.getElementById('entries');
+            container.innerHTML = '';
+
+            for (const entry of entries) {
+                const card = document.createElement('div'); card.className = 'entry';
+                const top = document.createElement('div');
+                top.className = 'entry-top';
+                top.style.display = 'flex';
+                top.style.flexWrap = 'wrap';
+                top.style.alignItems = 'center';
+                top.style.gap = '12px';
+
+                const contentSel = makeSelect(CONTENTS, entry.content, v => { entry.content = v; validate(); }, /*withPlaceholder=*/true);
+                const contentWrap = labeled('Content', contentSel);
+                contentWrap.style.minWidth = '260px';
+
+                const neartiteBox = document.createElement('input'); neartiteBox.type = 'checkbox'; neartiteBox.checked = !!entry.neartite; neartiteBox.onchange = () => { entry.neartite = neartiteBox.checked; };
+                const ntWrapInner = document.createElement('div'); ntWrapInner.style.display = 'flex'; ntWrapInner.style.alignItems = 'center'; ntWrapInner.style.gap = '8px';
+                ntWrapInner.appendChild(neartiteBox);
+                const neartiteLabel = document.createElement('span'); neartiteLabel.textContent = 'Neartite?'; ntWrapInner.appendChild(neartiteLabel);
+                const neartiteWrap = labeled(' ', ntWrapInner);
+
+                const spacer = document.createElement('div'); spacer.style.flex = '1 1 auto';
+                const del = document.createElement('button'); del.textContent = '✖'; del.title = 'Remove entry'; del.onclick = () => removeEntry(entry.id);
+                del.style.border = '1px solid #3a3f45'; del.style.background = '#1a1e23'; del.style.borderRadius = '8px'; del.style.padding = '6px 10px';
+
+                top.appendChild(contentWrap);
+                top.appendChild(neartiteWrap);
+                top.appendChild(spacer);
+                top.appendChild(del);
+                card.appendChild(top);
+
+                const hr = document.createElement('div'); hr.className = 'divider'; card.appendChild(hr);
+
+                const itemsWrap = document.createElement('div'); itemsWrap.style.display = 'flex'; itemsWrap.style.flexDirection = 'column'; itemsWrap.style.gap = '8px';
+
+                for (const line of entry.items) {
+                    const row = document.createElement('div'); row.className = 'itemline';
+                    const datalistId = 'list_' + line.id;
+                    const dl = document.createElement('datalist'); dl.id = datalistId; dl.style.display = 'none';
+                    for (const item of ITEM_LIST) { const opt = document.createElement('option'); opt.value = item; dl.appendChild(opt); }
+
+                    const itemInput = makeSearchInput('Search item...', datalistId, line.item, v => { line.item = v; validate(); });
+                    const gradeSel = makeSelect(GRADES, line.grade, v => { line.grade = v; }, /*withPlaceholder=*/false);
+                    const qtySel = makeSelect(QUANTITIES, line.qty, v => { line.qty = v; validate(); }, /*withPlaceholder=*/false);
+
+                    const kill = document.createElement('button'); kill.className = 'kill'; kill.textContent = '✖'; kill.onclick = () => removeItemLine(entry, line.id);
+
+                    row.appendChild(labeled('Item', itemInput));
+                    row.appendChild(dl);
+                    row.appendChild(labeled('Grade', gradeSel));
+                    row.appendChild(labeled('Quantity', qtySel));
+                    row.appendChild(kill);
+                    itemsWrap.appendChild(row);
+                }
+
+                const addBtn = document.createElement('button'); addBtn.className = 'add-item'; addBtn.textContent = '＋ Add Item'; addBtn.onclick = () => addItemLine(entry);
+                itemsWrap.appendChild(addBtn);
+                card.appendChild(itemsWrap);
+                container.appendChild(card);
+            }
+            validate();
+        }
+
+        function validate() { document.getElementById('submitBtn').disabled = !allEntriesValid(); persist(); }
+
+        async function submitEntries() {
+            if (!allEntriesValid()) return;
+            document.getElementById('submitBtn').disabled = true;
+            try {
+                const payload = {
+                    token: AUTH_TOKEN,
+                    honeypot: HONEYPOT,
+                    entries: entries.map(e => ({
+                        content: e.content,
+                        neartite: !!e.neartite,
+                        cohort, // per-link token from URL
+                        client_ts: new Date().toISOString(),
+                        items: e.items.map(l => ({ item: l.item, grade: l.grade, quantity: parseInt(l.qty, 10) }))
+                    }))
+                };
+                const res = await fetch(WEBAPP_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                clearEntries();
+                alert('Submitted successfully!');
+            } catch (err) {
+                console.error(err);
+                alert('Submission failed.');
+                document.getElementById('submitBtn').disabled = !allEntriesValid();
+            }
+        }
+
+        document.getElementById('addBtn').onclick = addEntry;
+        document.getElementById('clearBtn').onclick = () => { if (confirm('Clear all entries?')) clearEntries(); };
+        document.getElementById('submitBtn').onclick = submitEntries;
+
+        render();
+    </script>
+</body>
+</html>
